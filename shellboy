@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+
+# File to store the list of servers and their associated PEM files
+SERVER_FILE="ssh.txt"
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+# Function to load the server list from the file
+load_servers() {
+  if [[ -f $SERVER_FILE ]]; then
+    mapfile -t server_entries <"$SERVER_FILE"
+    servers=()
+    usernames=()
+    pem_files=()
+    names=()
+    for entry in "${server_entries[@]}"; do
+      names+=("$(echo "$entry" | cut -d' ' -f1)")
+      servers+=("$(echo "$entry" | cut -d' ' -f2)")
+      usernames+=("$(echo "$entry" | cut -d' ' -f3)")
+      pem_files+=("$(echo "$entry" | cut -d' ' -f4)")
+    done
+  else
+    names=()
+    servers=()
+    usernames=()
+    pem_files=()
+  fi
+}
+
+# Function to save the server list to the file
+save_servers() {
+  >"$SERVER_FILE"
+  for i in "${!servers[@]}"; do
+    echo "${names[$i]} ${servers[$i]} ${usernames[$i]} ${pem_files[$i]}" >>"$SERVER_FILE"
+  done
+}
+
+# Function to display the list of servers
+display_servers() {
+  echo "Please select a server to connect to:"
+  for i in "${!servers[@]}"; do
+    echo -e "$i) ${GREEN}Name: ${names[$i]}${NC} Host: ${servers[$i]} (Username: ${usernames[$i]})"
+  done
+  echo "a) Add a new server"
+  echo "r) Remove a server"
+  echo "q) Exit the program"
+}
+
+# Function to connect to the selected server
+connect_to_server() {
+  local index=$1
+  if [[ $index -ge 0 && $index -lt ${#servers[@]} ]]; then
+    echo -e "Connecting to ${RED}${servers[$index]}${NC} as ${usernames[$index]}..."
+    if [[ -n "${pem_files[$index]}" ]]; then
+      ssh -i "${pem_files[$index]}" "${usernames[$index]}@${servers[$index]}"
+    else
+      ssh "${usernames[$index]}@${servers[$index]}"
+    fi
+  else
+    echo "Invalid selection. Please enter a number between 0 and $((${#servers[@]} - 1)) or 'a' to add a new server."
+  fi
+}
+
+# Function to add a new server
+add_new_server() {
+  read -p "Enter the hostname or IP address of the new server: " new_server
+  read -p "Enter the username for the new server: " new_username
+  read -p "Enter the path to the PEM file (or leave empty if none): " new_pem
+  read -p "Enter a name for the connection: " new_name
+  if [[ -n $new_server && -n new_username ]]; then
+    servers+=("$new_server")
+    usernames+=("$new_username")
+    pem_files+=("$new_pem")
+    names+=("$new_name")
+    echo "Server '$new_name' added successfully."
+    save_servers
+  else
+    echo "Invalid input. Server not added."
+  fi
+}
+
+remove_server() {
+  echo "Please select a server to remove:"
+  for i in "${!servers[@]}"; do
+    echo "$i) ${servers[$i]} (Username: ${usernames[$i]})"
+  done
+  read -p "Enter the number of the server you wish to remove: " selection
+  if [[ $selection =~ ^[0-9]+$ ]] && [[ $selection -ge 0 && $selection -lt ${#servers[@]} ]]; then
+    echo "Removing server ${servers[$selection]}..."
+    unset servers[$selection]
+    unset usernames[$selection]
+    unset pem_files[$selection]
+    # Rebuild arrays to remove gaps
+    servers=("${servers[@]}")
+    usernames=("${usernames[@]}")
+    pem_files=("${pem_files[@]}")
+    save_servers
+    echo "Server removed successfully."
+  else
+    echo "Invalid selection. Please enter a valid number."
+  fi
+}
+
+# Load the server list
+load_servers
+
+# Main script logic
+while true; do
+  display_servers
+  read -p "Enter the number of the server you wish to connect to (or 'a' to add a new server): " selection
+  if [[ $selection =~ ^[0-9]+$ ]]; then
+    connect_to_server "$selection"
+    break
+  elif [[ $selection == "a" ]]; then
+    add_new_server
+  elif [[ $selection == "r" ]]; then
+    remove_server
+  elif [[ $selection == "q" ]]; then
+    echo "Goodbye"
+    exit 0
+  else
+    echo "Invalid input. Please enter a number or 'a' to add a new server."
+  fi
+done

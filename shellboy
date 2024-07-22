@@ -5,102 +5,197 @@ SERVER_FILE="ssh.txt"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
 NC='\033[0m'
+BOLD='\033[1m'
+UNDERLINE='\033[4m'
+
+# Function to display a fancy header
+print_header() {
+	echo -e "${CYAN}${BOLD}======================================="
+	echo -e "        sHellBoy Server Manager        "
+	echo -e "=======================================${NC}"
+}
+
+print_help() {
+	echo -e "${BOLD}Usage:${NC} ./script.sh [options]"
+	echo
+	echo -e "${BOLD}Options:${NC}"
+	echo -e "  -h, --help           Show this help message and exit"
+	echo
+	echo -e "${BOLD}Interactive Options:${NC}"
+	echo -e "  Enter the number of the server to connect to that server"
+	echo -e "  a                    Add a new server"
+	echo -e "  u                    Update an existing server"
+	echo -e "  r                    Remove a server"
+	echo -e "  p                    Print the SSH command for a server"
+	echo -e "  q                    Quit the program"
+}
 
 # Function to load the server list from the file
 load_servers() {
-  if [[ -f $SERVER_FILE ]]; then
-    mapfile -t server_entries <"$SERVER_FILE"
-    servers=()
-    usernames=()
-    pem_files=()
-    names=()
-    for entry in "${server_entries[@]}"; do
-      names+=("$(echo "$entry" | cut -d' ' -f1)")
-      servers+=("$(echo "$entry" | cut -d' ' -f2)")
-      usernames+=("$(echo "$entry" | cut -d' ' -f3)")
-      pem_files+=("$(echo "$entry" | cut -d' ' -f4)")
-    done
-  else
-    names=()
-    servers=()
-    usernames=()
-    pem_files=()
-  fi
+	if [[ -f $SERVER_FILE ]]; then
+		mapfile -t server_entries <"$SERVER_FILE"
+		servers=()
+		usernames=()
+		pem_files=()
+		names=()
+		for entry in "${server_entries[@]}"; do
+			names+=("$(echo "$entry" | cut -d' ' -f1)")
+			servers+=("$(echo "$entry" | cut -d' ' -f2)")
+			usernames+=("$(echo "$entry" | cut -d' ' -f3)")
+			pem_files+=("$(echo "$entry" | cut -d' ' -f4)")
+		done
+	else
+		names=()
+		servers=()
+		usernames=()
+		pem_files=()
+	fi
 }
 
 # Function to save the server list to the file
 save_servers() {
-  >"$SERVER_FILE"
-  for i in "${!servers[@]}"; do
-    echo "${names[$i]} ${servers[$i]} ${usernames[$i]} ${pem_files[$i]}" >>"$SERVER_FILE"
-  done
+	>"$SERVER_FILE"
+	for i in "${!servers[@]}"; do
+		echo "${names[$i]} ${servers[$i]} ${usernames[$i]} ${pem_files[$i]}" >>"$SERVER_FILE"
+	done
 }
 
 # Function to display the list of servers
 display_servers() {
-  echo "Please select a server to connect to:"
-  for i in "${!servers[@]}"; do
-    echo -e "$i) ${GREEN}Name: ${names[$i]}${NC} Host: ${servers[$i]} (Username: ${usernames[$i]})"
-  done
-  echo "a) Add a new server"
-  echo "r) Remove a server"
-  echo "q) Exit the program"
+	echo -e "${YELLOW}${BOLD}Please select a server to connect to:${NC}"
+	for i in "${!servers[@]}"; do
+		echo -e "${CYAN}$i) ${GREEN}Name: ${names[$i]}${NC} ${CYAN}Host: ${servers[$i]} (Username: ${usernames[$i]})${NC}"
+	done
+	echo -e "${MAGENTA}a) Add a new server"
+	echo -e "u) Update a server"
+	echo -e "r) Remove a server"
+	echo -e "p) Print ssh-command"
+	echo -e "h) Print help"
+	echo -e "q) Exit the program${NC}"
 }
 
 # Function to connect to the selected server
 connect_to_server() {
-  local index=$1
-  if [[ $index -ge 0 && $index -lt ${#servers[@]} ]]; then
-    echo -e "Connecting to ${RED}${servers[$index]}${NC} as ${usernames[$index]}..."
-    if [[ -n "${pem_files[$index]}" ]]; then
-      ssh -i "${pem_files[$index]}" "${usernames[$index]}@${servers[$index]}"
-    else
-      ssh "${usernames[$index]}@${servers[$index]}"
-    fi
-  else
-    echo "Invalid selection. Please enter a number between 0 and $((${#servers[@]} - 1)) or 'a' to add a new server."
-  fi
+	local index=$1
+	if [[ $index -ge 0 && $index -lt ${#servers[@]} ]]; then
+		echo -e "${YELLOW}Connecting to ${RED}${servers[$index]}${NC} as ${usernames[$index]}..."
+		if [[ -n "${pem_files[$index]}" ]]; then
+			ssh -i "${pem_files[$index]}" "${usernames[$index]}@${servers[$index]}"
+		else
+			ssh "${usernames[$index]}@${servers[$index]}"
+		fi
+	else
+		echo -e "${RED}Invalid selection. Please enter a number between 0 and $((${#servers[@]} - 1)) or 'a' to add a new server.${NC}"
+	fi
 }
 
 # Function to add a new server
 add_new_server() {
-  read -p "Enter the hostname or IP address of the new server: " new_server
-  read -p "Enter the username for the new server: " new_username
-  read -p "Enter the path to the PEM file (or leave empty if none): " new_pem
-  read -p "Enter a name for the connection: " new_name
-  if [[ -n $new_server && -n new_username ]]; then
-    servers+=("$new_server")
-    usernames+=("$new_username")
-    pem_files+=("$new_pem")
-    names+=("$new_name")
-    echo "Server '$new_name' added successfully."
-    save_servers
-  else
-    echo "Invalid input. Server not added."
-  fi
+	read -p "Enter the hostname or IP address of the new server: " new_server
+	read -p "Enter the username for the new server: " new_username
+	read -p "Enter the path to the PEM file (or leave empty if none): " new_pem
+	read -p "Enter a name for the connection: " new_name
+	if [[ -n $new_server && -n $new_username ]]; then
+		servers+=("$new_server")
+		usernames+=("$new_username")
+		pem_files+=("$new_pem")
+		names+=("$new_name")
+		echo -e "${GREEN}Server '$new_name' added successfully.${NC}"
+		save_servers
+	else
+		echo -e "${RED}Invalid input. Server not added.${NC}"
+	fi
 }
 
+# Function to remove a server
 remove_server() {
-  echo "Please select a server to remove:"
-  for i in "${!servers[@]}"; do
-    echo "$i) ${servers[$i]} (Username: ${usernames[$i]})"
-  done
-  read -p "Enter the number of the server you wish to remove: " selection
-  if [[ $selection =~ ^[0-9]+$ ]] && [[ $selection -ge 0 && $selection -lt ${#servers[@]} ]]; then
-    echo "Removing server ${servers[$selection]}..."
-    unset servers[$selection]
-    unset usernames[$selection]
-    unset pem_files[$selection]
-    # Rebuild arrays to remove gaps
-    servers=("${servers[@]}")
-    usernames=("${usernames[@]}")
-    pem_files=("${pem_files[@]}")
-    save_servers
-    echo "Server removed successfully."
-  else
-    echo "Invalid selection. Please enter a valid number."
-  fi
+	echo -e "${YELLOW}Please select a server to remove:${NC}"
+	for i in "${!servers[@]}"; do
+		echo -e "${CYAN}$i) ${servers[$i]} (Username: ${usernames[$i]})${NC}"
+	done
+	read -p "Enter the number of the server you wish to remove: " selection
+	if [[ $selection =~ ^[0-9]+$ ]] && [[ $selection -ge 0 && $selection -lt ${#servers[@]} ]]; then
+		echo -e "${RED}Removing server ${GREEN}${servers[$selection]}${NC}..."
+		unset servers[$selection]
+		unset usernames[$selection]
+		unset pem_files[$selection]
+		unset names[$selection]
+		# Rebuild arrays to remove gaps
+		servers=("${servers[@]}")
+		usernames=("${usernames[@]}")
+		pem_files=("${pem_files[@]}")
+		names=("${names[@]}")
+		save_servers
+		echo -e "${GREEN}Server removed successfully.${NC}"
+	else
+		echo -e "${RED}Invalid selection. Please enter a valid number.${NC}"
+	fi
+}
+
+# Function to update a server
+update_server() {
+	echo -e "${YELLOW}Please select a server to update:${NC}"
+	for i in "${!servers[@]}"; do
+		echo -e "${CYAN}$i) ${servers[$i]} (Username: ${usernames[$i]})${NC}"
+	done
+	read -p "Enter the number of the server you wish to update: " selection
+	if [[ $selection =~ ^[0-9]+$ ]] && [[ $selection -ge 0 && $selection -lt ${#servers[@]} ]]; then
+		echo -e "${YELLOW}Which property would you like to update?${NC}"
+		properties=("Name" "Host" "Username" "PEM-File")
+		for j in "${!properties[@]}"; do
+			echo -e "${CYAN}$j) ${properties[$j]}${NC}"
+		done
+		read -p "Enter the number of the property you want to change: " property
+		if [[ $property =~ ^[0-9]+$ ]] && [[ $property -ge 0 && $property -lt ${#properties[@]} ]]; then
+			case $property in
+			0)
+				read -p "Change Name from ${names[$selection]} to: " new_value
+				names[$selection]="$new_value"
+				;;
+			1)
+				read -p "Change Host from ${servers[$selection]} to: " new_value
+				servers[$selection]="$new_value"
+				;;
+			2)
+				read -p "Change Username from ${usernames[$selection]} to: " new_value
+				usernames[$selection]="$new_value"
+				;;
+			3)
+				read -p "Change PEM-File from ${pem_files[$selection]} to: " new_value
+				pem_files[$selection]="$new_value"
+				;;
+			esac
+			save_servers
+			echo -e "${GREEN}Server updated successfully.${NC}"
+		else
+			echo -e "${RED}Invalid input. Server not changed.${NC}"
+		fi
+	else
+		echo -e "${RED}Invalid selection. Please enter a valid number.${NC}"
+	fi
+}
+
+# Function to print the SSH command for a selected server
+print_ssh_command() {
+	echo -e "${YELLOW}Please select a server to print the SSH command:${NC} "
+	for i in "${!servers[@]}"; do
+		echo -e "${CYAN}$i) ${servers[$i]} (Username: ${usernames[$i]})${NC}"
+	done
+	read -p "Enter the number of the server you wish to print the SSH command for: " selection
+	if [[ $selection =~ ^[0-9]+$ ]] && [[ $selection -ge 0 && $selection -lt ${#servers[@]} ]]; then
+		if [[ -n "${pem_files[$selection]}" ]]; then
+			echo -e "${GREEN}ssh -i \"${pem_files[$selection]}\" \"${usernames[$selection]}@${servers[$selection]}\"${NC}"
+		else
+			echo -e "${GREEN}ssh \"${usernames[$selection]}@${servers[$selection]}\"${NC}"
+		fi
+	else
+		echo -e "${RED}Invalid selection. Please enter a valid number.${NC}"
+	fi
 }
 
 # Load the server list
@@ -108,19 +203,27 @@ load_servers
 
 # Main script logic
 while true; do
-  display_servers
-  read -p "Enter the number of the server you wish to connect to (or 'a' to add a new server): " selection
-  if [[ $selection =~ ^[0-9]+$ ]]; then
-    connect_to_server "$selection"
-    break
-  elif [[ $selection == "a" ]]; then
-    add_new_server
-  elif [[ $selection == "r" ]]; then
-    remove_server
-  elif [[ $selection == "q" ]]; then
-    echo "Goodbye"
-    exit 0
-  else
-    echo "Invalid input. Please enter a number or 'a' to add a new server."
-  fi
+	# clear
+	print_header
+	display_servers
+	read -p "Enter an option: " selection
+	if [[ $selection =~ ^[0-9]+$ ]]; then
+		connect_to_server "$selection"
+		break
+	elif [[ $selection == "a" ]]; then
+		add_new_server
+	elif [[ $selection == "u" ]]; then
+		update_server
+	elif [[ $selection == "r" ]]; then
+		remove_server
+	elif [[ $selection == "p" ]]; then
+		print_ssh_command
+	elif [[ $selection == "h" ]]; then
+		print_help
+	elif [[ $selection == "q" ]]; then
+		echo -e "${GREEN}Goodbye${NC}"
+		exit 0
+	else
+		echo -e "${RED}Invalid input. Please enter a number or 'a' to add a new server.${NC}"
+	fi
 done

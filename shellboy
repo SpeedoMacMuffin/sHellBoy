@@ -224,6 +224,6 @@ while true; do
 		echo -e "${GREEN}Goodbye${NC}"
 		exit 0
 	else
-		echo -e "${RED}Invalid input. Please enter a number or 'a' to add a new server.${NC}"
+		echo -e "${RED}Invalid input. Please enter a valid option.${NC}"
 	fi
 done

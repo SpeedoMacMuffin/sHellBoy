@@ -1,17 +1,23 @@
 #!/usr/bin/env bash
+# Get the directory where the script is located
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Specify the filename
+FILENAME="ssh.txt"
+
+# Construct the full path to the file
+SERVER_FILE="${SCRIPT_DIR}/${FILENAME}"
 # File to store the list of servers and their associated PEM files
-SERVER_FILE="ssh.txt"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
+# BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 BOLD='\033[1m'
-UNDERLINE='\033[4m'
+# UNDERLINE='\033[4m'
 
 # Function to display a fancy header
 print_header() {
@@ -59,7 +65,7 @@ load_servers() {
 
 # Function to save the server list to the file
 save_servers() {
-	>"$SERVER_FILE"
+	>"$SERVER_FILE" true
 	for i in "${!servers[@]}"; do
 		echo "${names[$i]} ${servers[$i]} ${usernames[$i]} ${pem_files[$i]}" >>"$SERVER_FILE"
 	done
@@ -69,7 +75,7 @@ save_servers() {
 display_servers() {
 	echo -e "${YELLOW}${BOLD}Please select a server to connect to:${NC}"
 	for i in "${!servers[@]}"; do
-		echo -e "${CYAN}$i) ${GREEN}Name: ${names[$i]}${NC} ${CYAN}Host: ${servers[$i]} (Username: ${usernames[$i]})${NC}"
+		echo -e "${CYAN}$i) ${GREEN}${names[$i]}${NC} ${CYAN}Host: ${servers[$i]} (Username: ${usernames[$i]})${NC}"
 	done
 	echo -e "${MAGENTA}a) Add a new server"
 	echo -e "u) Update a server"
@@ -90,16 +96,16 @@ connect_to_server() {
 			ssh "${usernames[$index]}@${servers[$index]}"
 		fi
 	else
-		echo -e "${RED}Invalid selection. Please enter a number between 0 and $((${#servers[@]} - 1)) or 'a' to add a new server.${NC}"
+		echo -e "${RED}Invalid selection. Please enter a number between 0 and $((${#servers[@]} - 1)).${NC}"
 	fi
 }
 
 # Function to add a new server
 add_new_server() {
-	read -p "Enter the hostname or IP address of the new server: " new_server
-	read -p "Enter the username for the new server: " new_username
-	read -p "Enter the path to the PEM file (or leave empty if none): " new_pem
-	read -p "Enter a name for the connection: " new_name
+	read -r -p "Enter the hostname or IP address of the new server: " new_server
+	read -r -p "Enter the username for the new server: " new_username
+	read -r -p "Enter the path to the PEM file (or leave empty if none): " new_pem
+	read -r -p "Enter a name for the connection: " new_name
 	if [[ -n $new_server && -n $new_username ]]; then
 		servers+=("$new_server")
 		usernames+=("$new_username")
@@ -118,13 +124,13 @@ remove_server() {
 	for i in "${!servers[@]}"; do
 		echo -e "${CYAN}$i) ${servers[$i]} (Username: ${usernames[$i]})${NC}"
 	done
-	read -p "Enter the number of the server you wish to remove: " selection
+	read -r -p "Enter the number of the server you wish to remove: " selection
 	if [[ $selection =~ ^[0-9]+$ ]] && [[ $selection -ge 0 && $selection -lt ${#servers[@]} ]]; then
 		echo -e "${RED}Removing server ${GREEN}${servers[$selection]}${NC}..."
-		unset servers[$selection]
-		unset usernames[$selection]
-		unset pem_files[$selection]
-		unset names[$selection]
+		unset 'servers["$selection"]'
+		unset 'usernames["$selection"]'
+		unset 'pem_files["$selection"]'
+		unset 'names["$selection"]'
 		# Rebuild arrays to remove gaps
 		servers=("${servers[@]}")
 		usernames=("${usernames[@]}")
@@ -143,31 +149,31 @@ update_server() {
 	for i in "${!servers[@]}"; do
 		echo -e "${CYAN}$i) ${servers[$i]} (Username: ${usernames[$i]})${NC}"
 	done
-	read -p "Enter the number of the server you wish to update: " selection
+	read -r -p "Enter the number of the server you wish to update: " selection
 	if [[ $selection =~ ^[0-9]+$ ]] && [[ $selection -ge 0 && $selection -lt ${#servers[@]} ]]; then
 		echo -e "${YELLOW}Which property would you like to update?${NC}"
 		properties=("Name" "Host" "Username" "PEM-File")
 		for j in "${!properties[@]}"; do
 			echo -e "${CYAN}$j) ${properties[$j]}${NC}"
 		done
-		read -p "Enter the number of the property you want to change: " property
+		read -r -p "Enter the number of the property you want to change: " property
 		if [[ $property =~ ^[0-9]+$ ]] && [[ $property -ge 0 && $property -lt ${#properties[@]} ]]; then
 			case $property in
 			0)
-				read -p "Change Name from ${names[$selection]} to: " new_value
-				names[$selection]="$new_value"
+				read -r -p "Change Name from ${names[$selection]} to: " new_value
+				names[selection]="$new_value"
 				;;
 			1)
-				read -p "Change Host from ${servers[$selection]} to: " new_value
-				servers[$selection]="$new_value"
+				read -r -p "Change Host from ${servers[$selection]} to: " new_value
+				servers[selection]="$new_value"
 				;;
 			2)
-				read -p "Change Username from ${usernames[$selection]} to: " new_value
-				usernames[$selection]="$new_value"
+				read -r -p "Change Username from ${usernames[$selection]} to: " new_value
+				usernames[selection]="$new_value"
 				;;
 			3)
-				read -p "Change PEM-File from ${pem_files[$selection]} to: " new_value
-				pem_files[$selection]="$new_value"
+				read -r -p "Change PEM-File from ${pem_files[$selection]} to: " new_value
+				pem_files[selection]="$new_value"
 				;;
 			esac
 			save_servers
@@ -186,7 +192,7 @@ print_ssh_command() {
 	for i in "${!servers[@]}"; do
 		echo -e "${CYAN}$i) ${servers[$i]} (Username: ${usernames[$i]})${NC}"
 	done
-	read -p "Enter the number of the server you wish to print the SSH command for: " selection
+	read -r -p "Enter the number of the server you wish to print the SSH command for: " selection
 	if [[ $selection =~ ^[0-9]+$ ]] && [[ $selection -ge 0 && $selection -lt ${#servers[@]} ]]; then
 		if [[ -n "${pem_files[$selection]}" ]]; then
 			echo -e "${GREEN}ssh -i \"${pem_files[$selection]}\" \"${usernames[$selection]}@${servers[$selection]}\"${NC}"
@@ -200,13 +206,12 @@ print_ssh_command() {
 
 # Load the server list
 load_servers
+print_header
 
 # Main script logic
 while true; do
-	# clear
-	print_header
 	display_servers
-	read -p "Enter an option: " selection
+	read -r -p "Enter an option: " selection
 	if [[ $selection =~ ^[0-9]+$ ]]; then
 		connect_to_server "$selection"
 		break
